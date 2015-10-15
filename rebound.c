@@ -421,7 +421,7 @@ launch(const char *confname, int ud, int ld, int kq)
 static void __dead
 usage(void)
 {
-	fprintf(stderr, "usage:\trebound [-c config]\n");
+	fprintf(stderr, "usage: rebound [-c config]\n");
 	exit(1);
 }
 
