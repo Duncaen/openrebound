@@ -180,7 +180,7 @@ newrequest(int ud, struct sockaddr *remoteaddr)
 	}
 	req->cacheent = hit;
 
-	req->s = socket(AF_INET, SOCK_DGRAM, 0);
+	req->s = socket(remoteaddr->sa_family, SOCK_DGRAM, 0);
 	if (req->s == -1)
 		goto fail;
 	if (connect(req->s, remoteaddr, remoteaddr->sa_len) == -1) {
@@ -259,7 +259,7 @@ newtcprequest(int ld, struct sockaddr *remoteaddr)
 	if (req->client == -1)
 		goto fail;
 
-	req->s = socket(AF_INET, SOCK_STREAM, 0);
+	req->s = socket(remoteaddr->sa_family, SOCK_STREAM, 0);
 	if (req->s == -1)
 		goto fail;
 	if (connect(req->s, remoteaddr, remoteaddr->sa_len) == -1)
