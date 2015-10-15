@@ -218,12 +218,12 @@ sendreply(int ud, struct request *req)
 	if (req->cacheent) {
 		req->cacheent->ts = now;
 		req->cacheent->ts.tv_sec += 10;
-		TAILQ_INSERT_TAIL(&cache, req->cacheent, cache);
 		req->cacheent->resp = malloc(r);
 		if (!req->cacheent->resp)
 			return;
 		memcpy(req->cacheent->resp, buf, r);
 		req->cacheent->resplen = r;
+		TAILQ_INSERT_TAIL(&cache, req->cacheent, cache);
 	}
 }
 
