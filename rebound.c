@@ -123,7 +123,8 @@ cachelookup(struct dnspacket *dnsreq, size_t reqlen)
 	origid = dnsreq->id;
 	dnsreq->id = 0;
 	TAILQ_FOREACH(hit, &cache, cache) {
-		if (memcmp(hit->req, dnsreq, reqlen) == 0)
+		if (hit->reqlen == reqlen &&
+		    memcmp(hit->req, dnsreq, reqlen) == 0)
 			break;
 	}
 	dnsreq->id = origid;
