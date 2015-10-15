@@ -212,7 +212,8 @@ sendreply(int ud, struct request *req)
 }
 
 void
-freerequest(struct request *req) {
+freerequest(struct request *req)
+{
 	TAILQ_REMOVE(&reqfifo, req, fifo);
 	close(req->client);
 	close(req->s);
@@ -220,7 +221,8 @@ freerequest(struct request *req) {
 }
 
 void
-freecacheent(struct dnscache *ent) {
+freecacheent(struct dnscache *ent)
+{
 	TAILQ_REMOVE(&cache, ent, cache);
 	free(ent->req);
 	free(ent->resp);
