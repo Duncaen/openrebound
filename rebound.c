@@ -264,7 +264,7 @@ newtcprequest(int ld, struct sockaddr *remoteaddr)
 {
 	struct request *req;
 
-	if (!(req = malloc(sizeof(*req))))
+	if (!(req = calloc(1, sizeof(*req))))
 		return NULL;
 
 	req->s = -1;
