@@ -326,6 +326,11 @@ launch(const char *confname, int ud, int ld, int kq)
 
 	close(kq);
 
+	if (pledge("stdio inet", NULL) == -1) {
+		logmsg(LOG_DAEMON | LOG_ERR, "pledge failed");
+		exit(1);
+	}
+
 	af = readconfig(conf, &remoteaddr);
 	fclose(conf);
 	if (af == -1) {
