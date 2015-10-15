@@ -316,7 +316,10 @@ launch(const char *confname, int ud, int ld, int kq)
 			return child;
 	}
 
-	pwd = getpwnam("nobody");
+	if (!(pwd = getpwnam("_rebound"))) {
+		logmsg(LOG_DAEMON | LOG_ERR, "getpwnam failed");
+		exit(1);
+	}
 
 	if (chroot("/var/empty") || chdir("/")) {
 		logmsg(LOG_DAEMON | LOG_ERR, "chroot failed (%d)", errno);
@@ -324,7 +327,12 @@ launch(const char *confname, int ud, int ld, int kq)
 	}
 
 	setproctitle("worker");
-	setresuid(pwd->pw_uid, pwd->pw_uid, pwd->pw_uid);
+	if (setgroups(1, &pwd->pw_gid) ||
+	    setresgid(pwd->pw_gid, pwd->pw_gid, pwd->pw_gid) ||
+	    setresuid(pwd->pw_uid, pwd->pw_uid, pwd->pw_uid)) {
+		logmsg(LOG_DAEMON | LOG_ERR, "failed to privdrop");
+		exit(1);
+	}
 
 	close(kq);
 
