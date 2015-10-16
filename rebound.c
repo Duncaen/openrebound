@@ -409,7 +409,7 @@ launch(const char *confname, int ud, int ld, int kq)
 					kevent(kq, chlist, 1, NULL, 0, NULL);
 					TAILQ_INSERT_TAIL(&reqfifo, req, fifo);
 				}
-			} else {
+			} else if (kev[i].filter == EVFILT_READ) {
 				/* use a tree here? */
 				req = TAILQ_FIRST(&reqfifo);
 				while (req) {
@@ -423,6 +423,9 @@ launch(const char *confname, int ud, int ld, int kq)
 				if (req->client == -1)
 					sendreply(ud, req);
 				freerequest(req);
+			} else {
+				logerr(LOG_DAEMON | LOG_ERR,
+				    "don't know what happened");
 			}
 		}
 
