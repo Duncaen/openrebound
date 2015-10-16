@@ -269,7 +269,14 @@ freecacheent(struct dnscache *ent)
 static struct request *
 tcpphasetwo(struct request *req)
 {
+	int error;
+	socklen_t len = sizeof(error);
+
 	req->phase = 2;
+	
+	if (getsockopt(req->s, SOL_SOCKET, SO_ERROR, &error, &len) == -1 ||
+	    error != 0)
+		goto fail;
 	if (setsockopt(req->client, SOL_SOCKET, SO_SPLICE, &req->s,
 	    sizeof(req->s)) == -1)
 		goto fail;
