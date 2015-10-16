@@ -452,7 +452,8 @@ launch(const char *confname, int ud, int ld, int kq)
 		}
 
 	}
-	exit(0);
+	/* not reached */
+	exit(1);
 }
 
 static void __dead
