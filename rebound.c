@@ -496,6 +496,8 @@ launch(const char *confname, int ud, int ld, int kq)
 			timespecsub(&req->ts, &now, &ts);
 			timeout = &ts;
 		}
+		if (timeout)
+			timeout->tv_sec += 1;
 
 	}
 	/* not reached */
