@@ -541,6 +541,8 @@ launch(const char *confname, int ud, int ld, int kq)
 			}
 		}
 
+		timeout = NULL;
+
 		if (stopaccepting) {
 			EV_SET(&ch[0], ld, EVFILT_READ, EV_DELETE, 0, 0, NULL);
 			kevent(kq, ch, 1, NULL, 0, NULL);
@@ -554,7 +556,6 @@ launch(const char *confname, int ud, int ld, int kq)
 		while (cachecount > cachemax)
 			freecacheent(TAILQ_FIRST(&cachefifo));
 
-		timeout = NULL;
 		/* burn old cache entries */
 		while ((ent = TAILQ_FIRST(&cachefifo))) {
 			if (timespeccmp(&ent->ts, &now, <=))
