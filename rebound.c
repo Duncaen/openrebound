@@ -641,6 +641,7 @@ main(int argc, char **argv)
 
 	cachemax = 10000; /* something big, but not huge */
 
+	tzset();
 	openlog("rebound", LOG_PID | LOG_NDELAY, LOG_DAEMON);
 
 	if (!debug)
