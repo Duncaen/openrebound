@@ -322,7 +322,7 @@ tcpphasetwo(struct request *req)
 	socklen_t len = sizeof(error);
 
 	req->tcp = 2;
-	
+
 	if (getsockopt(req->s, SOL_SOCKET, SO_ERROR, &error, &len) == -1 ||
 	    error != 0)
 		goto fail;
