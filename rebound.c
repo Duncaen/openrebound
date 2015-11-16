@@ -273,11 +273,13 @@ newrequest(int ud, struct sockaddr *remoteaddr)
 	RB_INSERT(reqtree, &reqtree, req);
 
 	if (connect(req->s, remoteaddr, remoteaddr->sa_len) == -1) {
-		logmsg(LOG_NOTICE, "failed to connect");
+		logmsg(LOG_NOTICE, "failed to connect (%d)", errno);
 		goto fail;
 	}
-	if (send(req->s, buf, r, 0) != r)
+	if (send(req->s, buf, r, 0) != r) {
+		logmsg(LOG_NOTICE, "failed to send (%d)", errno);
 		goto fail;
+	}
 
 	return req;
 
