@@ -616,7 +616,7 @@ main(int argc, char **argv)
 	struct timespec ts, *timeout = NULL;
 	const char *conffile = "/etc/rebound.conf";
 
-	if (pledge("stdio inet proc id rpath", NULL) == -1)
+	if (pledge("stdio rpath inet proc id", NULL) == -1)
 		logerr("pledge failed");
 
 	while ((ch = getopt(argc, argv, "c:d")) != -1) {
