@@ -436,8 +436,10 @@ launch(const char *confname, int ud, int ld, int kq)
 
 	parent = getpid();
 	if (!debug) {
-		if ((child = fork()))
+		if ((child = fork())) {
+			fclose(conf);
 			return child;
+		}
 		close(kq);
 	}
 
