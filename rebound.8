@@ -21,6 +21,7 @@
 .Nd DNS proxy
 .Sh SYNOPSIS
 .Nm rebound
+.Op Fl d
 .Op Fl c Ar config
 .Sh DESCRIPTION
 The
@@ -28,10 +29,29 @@ The
 daemon proxies DNS requests.
 It listens on localhost and forwards queries to another server.
 .Pp
+The options are as follows:
+.Bl -tag -width Ds
+.It Fl c Ar config
+Specify an alternative configuration file, instead of the default
+.Pa /etc/rebound.conf .
 At present, the config file consists of a single line containing the next
 hop DNS server.
 .Nm
 will reload the configuration file when sent a SIGHUP signal.
+.It Fl d
+Debug mode.
+.Nm
+does not
+.Xr fork 2
+into the background.
+.El
+.Sh FILES
+.Bl -tag -width "/etc/rebound.confXX" -compact
+.It Pa /etc/rebound.conf
+Default
+.Nm
+configuration file.
+.El
 .Sh SEE ALSO
 .Xr resolv.conf 5 ,
 .Xr unbound 8
