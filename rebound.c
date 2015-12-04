@@ -23,7 +23,6 @@
 #include <sys/event.h>
 #include <sys/resource.h>
 #include <sys/time.h>
-#include <sys/signal.h>
 #include <sys/wait.h>
 
 #include <signal.h>
