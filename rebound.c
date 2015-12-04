@@ -652,6 +652,8 @@ main(int argc, char **argv)
 	if (argc)
 		usage();
 
+	signal(SIGPIPE, SIG_IGN);
+
 	if (getrlimit(RLIMIT_NOFILE, &rlim) == -1)
 		err(1, "getrlimit");
 	rlim.rlim_cur = rlim.rlim_max;
