@@ -66,7 +66,6 @@ struct dnsrr {
  * until then, the request owns the entry and must free it.
  * after it's on the list, the request must not free it.
  */
-
 struct dnscache {
 	TAILQ_ENTRY(dnscache) fifo;
 	RB_ENTRY(dnscache) cachenode;
@@ -85,7 +84,7 @@ static int cachemax;
 static uint64_t cachehits;
 
 /*
- * requests are kept on both fifo and tree, but only after socket s is set.
+ * requests are kept on a fifo list, but only after socket s is set.
  */
 struct request {
 	int s;
