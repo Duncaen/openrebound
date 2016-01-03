@@ -645,6 +645,7 @@ main(int argc, char **argv)
 
 	TAILQ_INIT(&reqfifo);
 	TAILQ_INIT(&cachefifo);
+	RB_INIT(&cachetree);
 
 	memset(&bindaddr, 0, sizeof(bindaddr));
 	bindaddr.sin_len = sizeof(bindaddr);
