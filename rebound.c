@@ -607,9 +607,6 @@ main(int argc, char **argv)
 	const char *confname = "/etc/rebound.conf";
 	FILE *conf;
 
-	if (pledge("stdio rpath getpw inet proc id", NULL) == -1)
-		logerr("pledge failed");
-
 	while ((ch = getopt(argc, argv, "c:d")) != -1) {
 		switch (ch) {
 		case 'c':
