@@ -110,13 +110,17 @@ logmsg(int prio, const char *msg, ...)
 {
 	va_list ap;
 
-	va_start(ap, msg);
 	if (debug || !daemonized) {
+		va_start(ap, msg);
 		vfprintf(stderr, msg, ap);
 		fprintf(stderr, "\n");
+		va_end(ap);
 	}
-	vsyslog(LOG_DAEMON | prio, msg, ap);
-	va_end(ap);
+	if (!debug) {
+		va_start(ap, msg);
+		vsyslog(LOG_DAEMON | prio, msg, ap);
+		va_end(ap);
+	}
 }
 
 static void __dead
@@ -124,14 +128,18 @@ logerr(const char *msg, ...)
 {
 	va_list ap;
 
-	va_start(ap, msg);
 	if (debug || !daemonized) {
+		va_start(ap, msg);
 		fprintf(stderr, "rebound: ");
 		vfprintf(stderr, msg, ap);
 		fprintf(stderr, "\n");
+		va_end(ap);
 	}
-	vsyslog(LOG_DAEMON | LOG_ERR, msg, ap);
-	va_end(ap);
+	if (!debug) {
+		va_start(ap, msg);
+		vsyslog(LOG_DAEMON | LOG_ERR, msg, ap);
+		va_end(ap);
+	}
 	exit(1);
 }
 
