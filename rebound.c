@@ -19,7 +19,11 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/queue.h>
+#ifdef __openbsd__
 #include <sys/tree.h>
+#else
+#include "sys-tree.h"
+#endif
 #include <sys/event.h>
 #include <sys/resource.h>
 #include <sys/time.h>
@@ -36,6 +40,15 @@
 #include <errno.h>
 #include <getopt.h>
 #include <stdarg.h>
+#ifdef __linux__
+#include <stdint.h>
+#include <time.h>
+#include <grp.h>
+#endif
+
+#ifndef __openbsd__
+#include "openbsd.h"
+#endif
 
 uint16_t randomid(void);
 
@@ -220,6 +233,9 @@ newrequest(int ud, struct sockaddr *remoteaddr)
 {
 	struct sockaddr from;
 	socklen_t fromlen;
+#ifndef __openbsd__
+	socklen_t remotelen;
+#endif
 	struct request *req;
 	uint8_t buf[65536];
 	struct dnspacket *dnsreq;
@@ -277,7 +293,12 @@ newrequest(int ud, struct sockaddr *remoteaddr)
 
 	TAILQ_INSERT_TAIL(&reqfifo, req, fifo);
 
+#ifdef __openbsd__
 	if (connect(req->s, remoteaddr, remoteaddr->sa_len) == -1) {
+#else
+	if (connect(req->s, remoteaddr, remotelen) == -1) {
+	remotelen = sizeof(*remoteaddr);
+#endif
 		logmsg(LOG_NOTICE, "failed to connect (%d)", errno);
 		if (errno == EADDRNOTAVAIL)
 			servfail(ud, req->clientid, &from, fromlen);
@@ -334,6 +355,7 @@ tcpphasetwo(struct request *req)
 
 	req->tcp = 2;
 
+#ifdef SO_SPLICE
 	if (getsockopt(req->s, SOL_SOCKET, SO_ERROR, &error, &len) == -1 ||
 	    error != 0)
 		goto fail;
@@ -343,6 +365,7 @@ tcpphasetwo(struct request *req)
 	if (setsockopt(req->s, SOL_SOCKET, SO_SPLICE, &req->client,
 	    sizeof(req->client)) == -1)
 		goto fail;
+#endif
 
 	return req;
 
@@ -355,6 +378,9 @@ static struct request *
 newtcprequest(int ld, struct sockaddr *remoteaddr)
 {
 	struct request *req;
+#ifndef __openbsd__
+	socklen_t remotelen;
+#endif
 	int client;
 
 	client = accept(ld, NULL, 0);
@@ -382,7 +408,12 @@ newtcprequest(int ld, struct sockaddr *remoteaddr)
 
 	TAILQ_INSERT_TAIL(&reqfifo, req, fifo);
 
+#ifdef __openbsd__
 	if (connect(req->s, remoteaddr, remoteaddr->sa_len) == -1) {
+#else
+	remotelen = sizeof(*remoteaddr);
+	if (connect(req->s, remoteaddr, remotelen) == -1) {
+#endif
 		if (errno != EINPROGRESS)
 			goto fail;
 	} else {
@@ -409,12 +440,16 @@ readconfig(FILE *conf, struct sockaddr_storage *remoteaddr)
 
 	memset(remoteaddr, 0, sizeof(*remoteaddr));
 	if (inet_pton(AF_INET, buf, &sin->sin_addr) == 1) {
+#ifdef __openbsd__
 		sin->sin_len = sizeof(*sin);
+#endif
 		sin->sin_family = AF_INET;
 		sin->sin_port = htons(53);
 		return AF_INET;
 	} else if (inet_pton(AF_INET6, buf, &sin6->sin6_addr) == 1) {
+#ifdef __openbsd__
 		sin6->sin6_len = sizeof(*sin6);
+#endif
 		sin6->sin6_family = AF_INET6;
 		sin6->sin6_port = htons(53);
 		return AF_INET6;
@@ -454,16 +489,20 @@ launch(FILE *conf, int ud, int ld, int kq)
 	if (chdir("/") == -1)
 		logerr("chdir failed (%d)", errno);
 
+#ifdef __openbsd__
 	setproctitle("worker");
+#endif
 	if (setgroups(1, &pwd->pw_gid) ||
 	    setresgid(pwd->pw_gid, pwd->pw_gid, pwd->pw_gid) ||
 	    setresuid(pwd->pw_uid, pwd->pw_uid, pwd->pw_uid))
 		logerr("failed to privdrop");
 
 	/* would need pledge(proc) to do this below */
+#ifdef __openbsd__
 	EV_SET(&kev[0], parent, EVFILT_PROC, EV_ADD, NOTE_EXIT, 0, NULL);
 	if (kevent(kq, kev, 1, NULL, 0, NULL) == -1)
 		logerr("kevent1: %d", errno);
+#endif
 
 	if (pledge("stdio inet", NULL) == -1)
 		logerr("pledge failed");
@@ -650,7 +689,9 @@ main(int argc, char **argv)
 	RB_INIT(&cachetree);
 
 	memset(&bindaddr, 0, sizeof(bindaddr));
+#ifdef __openbsd__
 	bindaddr.sin_len = sizeof(bindaddr);
+#endif
 	bindaddr.sin_family = AF_INET;
 	bindaddr.sin_port = htons(53);
 	inet_aton("127.0.0.1", &bindaddr.sin_addr);
@@ -698,8 +739,10 @@ main(int argc, char **argv)
 			logerr("failed to launch");
 
 		/* monitor child */
+#ifdef __openbsd__
 		EV_SET(&kev, child, EVFILT_PROC, EV_ADD, NOTE_EXIT, 0, NULL);
 		kevent(kq, &kev, 1, NULL, 0, NULL);
+#endif
 
 		/* wait for something to happen: HUP or child exiting */
 		while (1) {

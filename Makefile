@@ -6,4 +6,4 @@ CFLAGS+=-Wall
 
 MAN=	rebound.8
 
-.include <bsd.prog.mk>
+include bsd.prog.mk

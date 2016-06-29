@@ -30,6 +30,9 @@
  * be reused for at least 32768 calls.
  */
 #include <stdlib.h>
+
+#include "openbsd.h"
+
 #define nitems(arr) (sizeof(arr) / sizeof(arr[0]))
 
 static u_int16_t ip_shuffle[65536];
