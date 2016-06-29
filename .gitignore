@@ -1,0 +1,4 @@
+libkqueue
+*.o
+*.d
+*.a
