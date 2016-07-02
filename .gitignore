@@ -1,4 +1,4 @@
-libkqueue
+rebound
 *.o
 *.d
 *.a
