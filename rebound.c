@@ -18,13 +18,15 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <sys/queue.h>
 #ifdef __openbsd__
+#include <sys/queue.h>
 #include <sys/tree.h>
-#else
-#include "sys-tree.h"
-#endif
 #include <sys/event.h>
+#else
+#include "queue.h"
+#include "sys-tree.h"
+#include "kqueue_epoll.h"
+#endif
 #include <sys/resource.h>
 #include <sys/time.h>
 #include <sys/wait.h>
@@ -195,10 +197,18 @@ freerequest(struct request *req)
 		conncount -= 1;
 	if (req->s != -1) {
 		TAILQ_REMOVE(&reqfifo, req, fifo);
+#ifdef __openbsd__
 		close(req->s);
+#else
+		shutdown(req->s, SHUT_RDWR);
+#endif
 	}
 	if (req->client != -1)
+#ifdef __openbsd__
 		close(req->client);
+#else
+		shutdown(req->client, SHUT_RDWR);
+#endif
 	if ((ent = req->cacheent) && !ent->resp) {
 		free(ent->req);
 		free(ent);
@@ -262,6 +272,7 @@ newrequest(int ud, struct sockaddr *remoteaddr)
 	conncount += 1;
 	req->ts = now;
 	req->ts.tv_sec += 30;
+	req->tcp = 0;
 	req->s = -1;
 
 	req->client = -1;
@@ -296,8 +307,8 @@ newrequest(int ud, struct sockaddr *remoteaddr)
 #ifdef __openbsd__
 	if (connect(req->s, remoteaddr, remoteaddr->sa_len) == -1) {
 #else
-	if (connect(req->s, remoteaddr, remotelen) == -1) {
 	remotelen = sizeof(*remoteaddr);
+	if (connect(req->s, remoteaddr, remotelen) == -1) {
 #endif
 		logmsg(LOG_NOTICE, "failed to connect (%d)", errno);
 		if (errno == EADDRNOTAVAIL)
@@ -467,7 +478,11 @@ readconfig(FILE *conf, struct sockaddr_storage *remoteaddr)
 }
 
 static int
+#ifdef __openbsd__
 launch(FILE *conf, int ud, int ld, int kq)
+#else
+launch(FILE *conf, int ud, int ld, int kq, int *pfd)
+#endif
 {
 	struct sockaddr_storage remoteaddr;
 	struct kevent ch[2], kev[4];
@@ -485,6 +500,9 @@ launch(FILE *conf, int ud, int ld, int kq)
 			return child;
 		}
 		close(kq);
+#ifndef __openbsd__
+		close(pfd[1]);
+#endif
 	}
 
 	kq = kqueue();
@@ -505,12 +523,14 @@ launch(FILE *conf, int ud, int ld, int kq)
 	    setresuid(pwd->pw_uid, pwd->pw_uid, pwd->pw_uid))
 		logerr("failed to privdrop");
 
-	/* would need pledge(proc) to do this below */
 #ifdef __openbsd__
+	/* would need pledge(proc) to do this below */
 	EV_SET(&kev[0], parent, EVFILT_PROC, EV_ADD, NOTE_EXIT, 0, NULL);
+#else
+	EV_SET(&kev[0], pfd[0], EVFILT_READ, EV_ADD, 0, 0, NULL);
+#endif
 	if (kevent(kq, kev, 1, NULL, 0, NULL) == -1)
 		logerr("kevent1: %d", errno);
-#endif
 
 	if (pledge("stdio inet", NULL) == -1)
 		logerr("pledge failed");
@@ -553,7 +573,12 @@ launch(FILE *conf, int ud, int ld, int kq)
 					    "%d active, %llu hits",
 					    cachecount, cachehits);
 				}
+#ifdef __openbsd__
 			} else if (kev[i].filter == EVFILT_PROC) {
+#else
+			} else if (kev[i].ident == pfd[0]) {
+				if (!(kev[i].flags & EV_EOF)) continue;
+#endif
 				logmsg(LOG_INFO, "parent died");
 				exit(0);
 			} else if (kev[i].filter == EVFILT_WRITE) {
@@ -652,6 +677,9 @@ main(int argc, char **argv)
 	int r, kq, ld, ud, ch;
 	int one;
 	int childdead, hupped;
+#ifndef __openbsd__
+	int pfd[2];
+#endif
 	pid_t child;
 	struct kevent kev;
 	struct rlimit rlim;
@@ -728,12 +756,21 @@ main(int argc, char **argv)
 	signal(SIGUSR1, SIG_IGN);
 	signal(SIGHUP, SIG_IGN);
 
+#ifdef __openbsd__
 	if (debug)
 		return launch(conf, ud, ld, -1);
+#else
+	if (pipe(pfd) == -1)
+		logerr("pipe: %s", strerror(errno));
+	if (debug)
+		return launch(conf, ud, ld, -1, pfd);
+#endif
 
+#ifdef __openbsd__
 	if (daemon(0, 0) == -1)
 		logerr("daemon: %s", strerror(errno));
 	daemonized = 1;
+#endif
 
 	kq = kqueue();
 
@@ -742,28 +779,39 @@ main(int argc, char **argv)
 	while (1) {
 		hupped = 0;
 		childdead = 0;
+#ifdef __openbsd__
 		child = launch(conf, ud, ld, kq);
+#else
+		child = launch(conf, ud, ld, kq, pfd);
+#endif
 		if (child == -1)
 			logerr("failed to launch");
 
 		/* monitor child */
 #ifdef __openbsd__
 		EV_SET(&kev, child, EVFILT_PROC, EV_ADD, NOTE_EXIT, 0, NULL);
-		kevent(kq, &kev, 1, NULL, 0, NULL);
+#else
+		EV_SET(&kev, SIGCHLD, EVFILT_SIGNAL, EV_ADD, 0, 0, NULL);
 #endif
+		kevent(kq, &kev, 1, NULL, 0, NULL);
 
 		/* wait for something to happen: HUP or child exiting */
 		while (1) {
 			r = kevent(kq, NULL, 0, &kev, 1, timeout);
+			logmsg(LOG_NOTICE, "kevent main r=%d", r);
 			if (r == -1)
 				logerr("kevent failed (%d)", errno);
 
 			if (r == 0) {
 				/* timeout expired */
 				logerr("child died without HUP");
+#ifdef __openbsd__
 			} else if (kev.filter == EVFILT_SIGNAL) {
+#else
+			} else if (kev.filter == EVFILT_SIGNAL && kev.ident == SIGHUP) {
+#endif
 				/* signaled. kill child. */
-				logmsg(LOG_INFO, "received HUP, restarting");
+				logmsg(LOG_INFO, "received HUP, restarting hupped=%d",hupped);
 				hupped = 1;
 				if (childdead)
 					break;
@@ -772,7 +820,12 @@ main(int argc, char **argv)
 				if (!conf)
 					logerr("failed to open config %s",
 					    confname);
+#ifdef __openbsd__
 			} else if (kev.filter == EVFILT_PROC) {
+#else
+			} else if (kev.filter == EVFILT_SIGNAL && kev.ident == SIGCHLD) {
+				while (waitpid(-1, NULL, WNOHANG) > 0);
+#endif
 				/* child died. wait for our own HUP. */
 				logmsg(LOG_INFO, "observed child exit");
 				childdead = 1;
