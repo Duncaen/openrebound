@@ -33,8 +33,6 @@
 
 #include <uev/uev.h>
 
-#include "openbsd.h"
-
 #define EVFILT_READ             (-1)
 #define EVFILT_WRITE            (-2)
 #define EVFILT_AIO              (-3)    /* attached to aio requests */

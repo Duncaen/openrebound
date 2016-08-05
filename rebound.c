@@ -18,13 +18,11 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#ifdef __openbsd__
 #include <sys/queue.h>
 #include <sys/tree.h>
+#ifdef __openbsd__
 #include <sys/event.h>
 #else
-#include "queue.h"
-#include "sys-tree.h"
 #include "kqueue_epoll.h"
 #endif
 #include <sys/resource.h>
@@ -46,10 +44,6 @@
 #include <stdint.h>
 #include <time.h>
 #include <grp.h>
-#endif
-
-#ifndef __openbsd__
-#include "openbsd.h"
 #endif
 
 uint16_t randomid(void);

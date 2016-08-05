@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <errno.h>
 #include <err.h>
 #include <string.h>
@@ -6,8 +7,8 @@
 #include <sys/signalfd.h>
 #include <sys/signal.h>
 #include <sys/epoll.h>
+#include <sys/queue.h>
 
-#include "queue.h"
 #include "kqueue_epoll.h"
 
 struct watcher {
@@ -42,7 +43,7 @@ kevent_enable(struct kqueue *kq, struct watcher *w)
 {
 	sigset_t m;
 	struct epoll_event ev;
-	int rv;
+	int rv = 0;
 
 	switch (w->ke.filter) {
 		case EVFILT_READ:
@@ -70,7 +71,7 @@ kevent_enable(struct kqueue *kq, struct watcher *w)
 
 	ev.events = w->ev | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
 	ev.data.ptr = w;
-	if ((rv == epoll_ctl(kq->fd, EPOLL_CTL_ADD, w->fd, &ev)) < 0) {
+	if ((rv = epoll_ctl(kq->fd, EPOLL_CTL_ADD, w->fd, &ev)) < 0) {
 		if (rv != EEXIST)
 			return -1;
 
