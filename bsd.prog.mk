@@ -1,30 +1,25 @@
-OBJS = ${SRCS:.c=.o}
+OBJS= ${SRCS:.c=.o}
+LIB =libopenbsd/libopenbsd.a
 
-COMPATLIB = libopenbsd.a
-COMPATSRCS= arc4random.c arc4random_uniform.c getentropy_linux.c sha2.c
-COMPATSRCS+=pledge-noop.c explicit_bzero.c kqueue_epoll.c
-COMPATOBJS= $(addprefix libopenbsd/,${COMPATSRCS:.c=.o})
+LIBSRCS = arc4random.c arc4random_uniform.c getentropy_linux.c sha2.c
+LIBSRCS+= pledge-noop.c explicit_bzero.c kqueue_epoll.c
+LIBOBJS = ${LIBSRCS:%.c=libopenbsd/%.o}
 
-override CFLAGS+= -O2 -MD -MP
-override CFLAGS+=-I./libopenbsd/include
-LDFLAGS=-Wl,--as-needed
-
-CPPFLAGS= -D_DEFAULT_SOURCE -D_GNU_SOURCE
-CPPFLAGS+= -include libopenbsd/openbsd.h
-CPPFLAGS+=-D__linux__
+CPPFLAGS+= -D_DEFAULT_SOURCE -D_GNU_SOURCE -D__linux__
+CPPFLAGS+=-I./libopenbsd/include -include libopenbsd/openbsd.h
+override CFLAGS+= -MD -MP
 
 default: ${PROG}
 
-${COMPATLIB}: ${COMPATOBJS}
+${LIB}: ${LIBOBJS}
 	${AR} -r $@ $?
 
-${PROG}: ${OBJS} ${COMPATLIB}
+${PROG}: ${OBJS} ${LIB}
 	${CC} ${CFLAGS} ${CPPFLAGS} $^ -o $@ ${LDFLAGS}
 
 clean:
-	rm -f ${PROG} ${COMPATLIB}
-	rm -f ${OBJS} ${OBJS:.o=.d} ${COMPATOBJS} ${COMPATOBJS:.o=.d}
+	rm -f ${PROG} ${LIB} *.o *.d libopenbsd/*.o libopenbsd/*.d
 
--include ${OBJS:.o=.d} ${COMPATOBJS:.o=.d}
+-include ${OBJS:.o=.d} ${LIBOBJS:.o=.d}
 
 .PHONY: default clean
