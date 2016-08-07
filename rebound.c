@@ -20,7 +20,7 @@
 #include <netinet/in.h>
 #include <sys/queue.h>
 #include <sys/tree.h>
-#ifdef __openbsd__
+#ifdef __OpenBSD__
 #include <sys/event.h>
 #else
 #include "kqueue_epoll.h"
@@ -191,14 +191,14 @@ freerequest(struct request *req)
 		conncount -= 1;
 	if (req->s != -1) {
 		TAILQ_REMOVE(&reqfifo, req, fifo);
-#ifdef __openbsd__
+#ifdef __OpenBSD__
 		close(req->s);
 #else
 		shutdown(req->s, SHUT_RDWR);
 #endif
 	}
 	if (req->client != -1)
-#ifdef __openbsd__
+#ifdef __OpenBSD__
 		close(req->client);
 #else
 		shutdown(req->client, SHUT_RDWR);
@@ -237,7 +237,7 @@ newrequest(int ud, struct sockaddr *remoteaddr)
 {
 	struct sockaddr from;
 	socklen_t fromlen;
-#ifndef __openbsd__
+#ifndef __OpenBSD__
 	socklen_t remotelen;
 #endif
 	struct request *req;
@@ -298,7 +298,7 @@ newrequest(int ud, struct sockaddr *remoteaddr)
 
 	TAILQ_INSERT_TAIL(&reqfifo, req, fifo);
 
-#ifdef __openbsd__
+#ifdef __OpenBSD__
 	if (connect(req->s, remoteaddr, remoteaddr->sa_len) == -1) {
 #else
 	remotelen = sizeof(*remoteaddr);
@@ -391,7 +391,7 @@ static struct request *
 newtcprequest(int ld, struct sockaddr *remoteaddr)
 {
 	struct request *req;
-#ifndef __openbsd__
+#ifndef __OpenBSD__
 	socklen_t remotelen;
 #endif
 	int client;
@@ -421,7 +421,7 @@ newtcprequest(int ld, struct sockaddr *remoteaddr)
 
 	TAILQ_INSERT_TAIL(&reqfifo, req, fifo);
 
-#ifdef __openbsd__
+#ifdef __OpenBSD__
 	if (connect(req->s, remoteaddr, remoteaddr->sa_len) == -1) {
 #else
 	remotelen = sizeof(*remoteaddr);
@@ -453,14 +453,14 @@ readconfig(FILE *conf, struct sockaddr_storage *remoteaddr)
 
 	memset(remoteaddr, 0, sizeof(*remoteaddr));
 	if (inet_pton(AF_INET, buf, &sin->sin_addr) == 1) {
-#ifdef __openbsd__
+#ifdef __OpenBSD__
 		sin->sin_len = sizeof(*sin);
 #endif
 		sin->sin_family = AF_INET;
 		sin->sin_port = htons(53);
 		return AF_INET;
 	} else if (inet_pton(AF_INET6, buf, &sin6->sin6_addr) == 1) {
-#ifdef __openbsd__
+#ifdef __OpenBSD__
 		sin6->sin6_len = sizeof(*sin6);
 #endif
 		sin6->sin6_family = AF_INET6;
@@ -472,7 +472,7 @@ readconfig(FILE *conf, struct sockaddr_storage *remoteaddr)
 }
 
 static int
-#ifdef __openbsd__
+#ifdef __OpenBSD__
 launch(FILE *conf, int ud, int ld, int kq)
 #else
 launch(FILE *conf, int ud, int ld, int kq, int *pfd)
@@ -494,7 +494,7 @@ launch(FILE *conf, int ud, int ld, int kq, int *pfd)
 			return child;
 		}
 		close(kq);
-#ifndef __openbsd__
+#ifndef __OpenBSD__
 		close(pfd[1]);
 #endif
 	}
@@ -509,7 +509,7 @@ launch(FILE *conf, int ud, int ld, int kq, int *pfd)
 	if (chdir("/") == -1)
 		logerr("chdir failed (%d)", errno);
 
-#ifdef __openbsd__
+#ifdef __OpenBSD__
 	setproctitle("worker");
 #endif
 	if (setgroups(1, &pwd->pw_gid) ||
@@ -517,7 +517,7 @@ launch(FILE *conf, int ud, int ld, int kq, int *pfd)
 	    setresuid(pwd->pw_uid, pwd->pw_uid, pwd->pw_uid))
 		logerr("failed to privdrop");
 
-#ifdef __openbsd__
+#ifdef __OpenBSD__
 	/* would need pledge(proc) to do this below */
 	EV_SET(&kev[0], parent, EVFILT_PROC, EV_ADD, NOTE_EXIT, 0, NULL);
 #else
@@ -567,7 +567,7 @@ launch(FILE *conf, int ud, int ld, int kq, int *pfd)
 					    "%d active, %llu hits",
 					    cachecount, cachehits);
 				}
-#ifdef __openbsd__
+#ifdef __OpenBSD__
 			} else if (kev[i].filter == EVFILT_PROC) {
 #else
 			} else if (kev[i].ident == pfd[0]) {
@@ -671,7 +671,7 @@ main(int argc, char **argv)
 	int r, kq, ld, ud, ch;
 	int one;
 	int childdead, hupped;
-#ifndef __openbsd__
+#ifndef __OpenBSD__
 	int pfd[2];
 #endif
 	pid_t child;
@@ -719,7 +719,7 @@ main(int argc, char **argv)
 	RB_INIT(&cachetree);
 
 	memset(&bindaddr, 0, sizeof(bindaddr));
-#ifdef __openbsd__
+#ifdef __OpenBSD__
 	bindaddr.sin_len = sizeof(bindaddr);
 #endif
 	bindaddr.sin_family = AF_INET;
@@ -750,7 +750,7 @@ main(int argc, char **argv)
 	signal(SIGUSR1, SIG_IGN);
 	signal(SIGHUP, SIG_IGN);
 
-#ifdef __openbsd__
+#ifdef __OpenBSD__
 	if (debug)
 		return launch(conf, ud, ld, -1);
 #else
@@ -760,7 +760,7 @@ main(int argc, char **argv)
 		return launch(conf, ud, ld, -1, pfd);
 #endif
 
-#ifdef __openbsd__
+#ifdef __OpenBSD__
 	if (daemon(0, 0) == -1)
 		logerr("daemon: %s", strerror(errno));
 	daemonized = 1;
@@ -773,7 +773,7 @@ main(int argc, char **argv)
 	while (1) {
 		hupped = 0;
 		childdead = 0;
-#ifdef __openbsd__
+#ifdef __OpenBSD__
 		child = launch(conf, ud, ld, kq);
 #else
 		child = launch(conf, ud, ld, kq, pfd);
@@ -782,7 +782,7 @@ main(int argc, char **argv)
 			logerr("failed to launch");
 
 		/* monitor child */
-#ifdef __openbsd__
+#ifdef __OpenBSD__
 		EV_SET(&kev, child, EVFILT_PROC, EV_ADD, NOTE_EXIT, 0, NULL);
 #else
 		EV_SET(&kev, SIGCHLD, EVFILT_SIGNAL, EV_ADD, 0, 0, NULL);
@@ -799,7 +799,7 @@ main(int argc, char **argv)
 			if (r == 0) {
 				/* timeout expired */
 				logerr("child died without HUP");
-#ifdef __openbsd__
+#ifdef __OpenBSD__
 			} else if (kev.filter == EVFILT_SIGNAL) {
 #else
 			} else if (kev.filter == EVFILT_SIGNAL && kev.ident == SIGHUP) {
@@ -814,7 +814,7 @@ main(int argc, char **argv)
 				if (!conf)
 					logerr("failed to open config %s",
 					    confname);
-#ifdef __openbsd__
+#ifdef __OpenBSD__
 			} else if (kev.filter == EVFILT_PROC) {
 #else
 			} else if (kev.filter == EVFILT_SIGNAL && kev.ident == SIGCHLD) {
